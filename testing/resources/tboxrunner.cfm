@@ -5,7 +5,11 @@
 <cfparam name="url.reporter"	default="ANTJunit">
 <cfscript>
 // create testbox
-testBox = new coldbox.system.testing.TestBox();
+if( directoryExists( expandPath("/coldbox/system/testing" ) ) ){
+	testBox = new coldbox.system.testing.TestBox();
+} else {
+	testBox = new testbox.system.testing.TestBox();
+}
 // clean up
 for( key in URL ){
 	url[ key ] = xmlFormat( trim( url[ key ] ) );
