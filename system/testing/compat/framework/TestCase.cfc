@@ -3,7 +3,7 @@
 * To MXUnit BaseTest Case.
 * All assertions found in this object delegate to our core Assertion object.
 */
-component extends="coldbox.system.testing.BaseSpec"{
+component extends="testbox.system.testing.BaseSpec"{
 
 	// ExpectedException Annotation
 	this.$exceptionAnnotation	= "mxunit:expectedException";
@@ -17,13 +17,69 @@ component extends="coldbox.system.testing.BaseSpec"{
 	* @output.hint The type of reporter to run the test with
 	*/
 	remote function runTestRemote(any testMethod="", boolean debug=false, output="simple") output=true{
-		var runner = new coldbox.system.testing.TestBox( bundles="#getMetadata(this).name#", reporter=arguments.output );
+		var runner = new testbox.system.testing.TestBox( bundles="#getMetadata(this).name#", reporter=arguments.output );
 
 		// Produce report
 		writeOutput( runner.run( testSpecs=arguments.testMethod ) );
 	}
 
 /*********************************** UTILITY Methods ***********************************/
+
+	function TestCase(){
+		return init();
+	}
+
+	function init(){
+		return this;
+	}
+
+	function getBaseTarget(){
+		return init();
+	}
+
+	/**
+	 *  Gets an array of all runnable test methods for this test case.
+	 *  This includes anything in its inheritance hierarchy
+	 **/
+
+    remote function getRunnableMethods() {
+            var a_methods = arrayNew(1);
+            var a_parentMethods = arrayNew(1);
+            var thisComponentMetadata = getMetadata(this);
+            var i = "";
+            var tmpParentObj = "";
+            var ComponentUtils = new mxunit.framework.ComponentUtils();
+            /* now get the public methods from the actual component */
+            if (StructKeyExists(thisComponentMetadata, "Functions")) {
+                    for(i=1; i<=arrayLen(thisComponentMetadata.Functions); i++) {
+                            thisComponentMetadata.Functions[i].access = isNull(thisComponentMetadata.Functions[i].access) ? "public" : thisComponentMetadata.Functions[i].access;
+                            testStruct = thisComponentMetadata.Functions[i];
+						if( !listFindNoCase("package,private", testStruct.access)
+							   AND !listFindNoCase("setUp,tearDown,beforeTests,afterTests", testStruct.name)
+							   AND !reFindNoCase("_cffunccfthread", testStruct.Name)
+							   AND !( (structKeyExists(testStruct, "test") AND isBoolean(testStruct.test) AND NOT testStruct.test))
+                         ) {
+                                    arrayAppend(a_methods, thisComponentMetadata.Functions[i].name);
+                            }
+                    }
+            }
+            /* climb the parent tree until we hit a framework template (i.e. TestCase) */
+            if (NOT componentUtils.isFrameworkTemplate(thisComponentMetadata.Extends.Path)) {
+                    tmpParentObj = createObject("component", thisComponentMetadata.Extends.Name);
+                    a_parentMethods = tmpParentObj.getRunnableMethods();
+
+                    for(i=1; i>=arrayLen(a_parentMethods); i=i1) {
+                            /* append this method from the parent only if the child didn't already add it */
+                            if (NOT listFindNoCase(arrayToList(a_methods), a_parentMethods[i])) {
+                                    arrayAppend(a_methods, a_parentMethods[i]);
+                            }
+                    }
+                    tmpParentObj = "";
+                    a_parentMethods = arrayNew(1);
+            }
+            return a_methods;
+    }
+
 
 	/**
 	* MXUnit style debug
@@ -46,16 +102,16 @@ component extends="coldbox.system.testing.BaseSpec"{
 	/**
 	* Injects properties into the receiving object
 	*/
-	any function injectProperty( 
-		required any receiver, 
-		required string propertyName, 
+	any function injectProperty(
+		required any receiver,
+		required string propertyName,
 		required any propertyValue,
 		string scope="variables"
 	){
 		// Mock it baby
 		getMockBox().prepareMock( arguments.receiver )
-			.$property( propertyName=arguments.propertyName, 
-						propertyScope=arguments.scope, 
+			.$property( propertyName=arguments.propertyName,
+						propertyScope=arguments.scope,
 						mock=arguments.propertyValue );
 
 		return arguments.receiver;
@@ -64,25 +120,25 @@ component extends="coldbox.system.testing.BaseSpec"{
 	/**
 	* injects the method from giver into receiver. This is helpful for quick and dirty mocking
 	*/
-	any function injectMethod( 
-		required any receiver, 
-		required any giver, 
+	any function injectMethod(
+		required any receiver,
+		required any giver,
 		required string functionName,
 		string functionNameInReceiver="#arguments.functionName#"
 	){
 		// Mock it baby
 		getMockBox().prepareMock( arguments.giver );
-		
+
 		// inject it.
 		if( structkeyexists( arguments.giver, arguments.functionName ) ){
 			arguments.receiver[ arguments.functionNameInReceiver ] = arguments.giver.$getProperty( name=arguments.functionName, scope="this" );
 		} else {
 			arguments.receiver[ arguments.functionNameInReceiver ] = arguments.giver.$getProperty( name=arguments.functionName, scope="variables" );
 		}
-		
+
 		return arguments.receiver;
 	}
-	
+
 /*********************************** ASSERTION METHODS ***********************************/
 
 	/**
