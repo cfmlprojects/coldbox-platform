@@ -3,7 +3,7 @@
 * To MXUnit BaseTest Case.
 * All assertions found in this object delegate to our core Assertion object.
 */
-component extends="testbox.system.testing.BaseSpec"{
+component extends="coldbox.system.testing.BaseSpec"{
 
 	// ExpectedException Annotation
 	this.$exceptionAnnotation	= "mxunit:expectedException";
